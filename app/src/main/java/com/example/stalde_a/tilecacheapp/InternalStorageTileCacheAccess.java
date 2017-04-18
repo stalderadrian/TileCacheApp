@@ -86,7 +86,7 @@ public class InternalStorageTileCacheAccess {
         }
     }
 
-    public SQLiteDatabase getDatabase(TileCache tileCache) throws Exception {
+    public SQLiteDatabase getWritableDatabase(TileCache tileCache) throws Exception {
         return mTileCacheSQLiteHelper.getWritableDatabase(getTileCacheDirectoryAsFile(tileCache));
     }
 

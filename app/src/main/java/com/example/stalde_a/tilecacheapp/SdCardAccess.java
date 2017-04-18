@@ -111,6 +111,8 @@ public class SdCardAccess {
                 moveFile(file, targetDir);
             }
         }
+
+        DocumentFile.fromFile(sourceDir).delete();
     }
 
     public void moveFile(File sourceFile, DocumentFile targetParentDir) throws Exception {
@@ -118,7 +120,13 @@ public class SdCardAccess {
         OutputStream out;
 
         String mimeType = getMimeFrom(sourceFile.toURI().toString());
-        DocumentFile targetFile = targetParentDir.createFile(mimeType, sourceFile.getName());
+        DocumentFile targetFile = targetParentDir.findFile(sourceFile.getName());
+        if (targetFile != null && targetFile.exists()) {
+            if (!targetFile.delete()) {
+                throw new Exception("Could not delete file '" + sourceFile.getName() + "'");
+            }
+        }
+        targetFile = targetParentDir.createFile(mimeType, sourceFile.getName());
         out = mContext.getContentResolver().openOutputStream(targetFile.getUri());
         in = new FileInputStream(sourceFile);
 
@@ -130,6 +138,12 @@ public class SdCardAccess {
         in.close();
         out.flush();
         out.close();
+
+        // TODO: Kann nicht gelöscht werden wenn auf SD Karte da von sourceFile
+//        DocumentFile sourceDocumentFile = DocumentFile.fromFile(sourceFile);
+//        if (!sourceDocumentFile.delete()) {
+//            throw new Exception("Could not delete file '" + sourceDocumentFile.getName() + "'");
+//        }
     }
 
     private static String getMimeFrom(String uri) {

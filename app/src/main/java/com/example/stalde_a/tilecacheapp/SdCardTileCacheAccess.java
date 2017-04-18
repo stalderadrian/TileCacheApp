@@ -30,12 +30,17 @@ public class SdCardTileCacheAccess {
         return new TileCache(name, true);
     }
 
-    private File getTileCacheDirectoryAsFile(TileCache tileCache) throws Exception {
+    private File getTileCacheRootDirectoryAsFile() throws Exception {
         File tileCacheRootDirectory = getOrCreateTileCacheRootDirectoryAsFile();
         if (tileCacheRootDirectory == null || !tileCacheRootDirectory.exists()) {
             throw new Exception("Tile cache root directory '" +
                     tileCacheRootDirectory.getAbsolutePath() + "' not found");
         }
+        return tileCacheRootDirectory;
+    }
+
+    public File getTileCacheDirectoryAsFile(TileCache tileCache) throws Exception {
+        File tileCacheRootDirectory = getTileCacheRootDirectoryAsFile();
         File tileCacheDirectory = new File(tileCacheRootDirectory, tileCache.getName());
         if (!tileCacheDirectory.exists()) {
             throw new Exception("Tile cache directory '" + tileCacheDirectory.getAbsolutePath() +
@@ -44,7 +49,7 @@ public class SdCardTileCacheAccess {
         return tileCacheDirectory;
     }
 
-    private DocumentFile getOrCreateTileCacheRootDirectory() throws Exception {
+    public DocumentFile getOrCreateTileCacheRootDirectory() throws Exception {
         DocumentFile sdCardRootDirectory = mSdCardAccess.getSdCardRootDirectory();
         if (sdCardRootDirectory == null || !sdCardRootDirectory.exists()) {
             throw new Exception("SD card root directory not found");
@@ -89,22 +94,13 @@ public class SdCardTileCacheAccess {
         }
     }
 
-    public SQLiteDatabase getDatabase(TileCache tileCache) throws Exception {
+    public SQLiteDatabase getReadonlyDatabase(TileCache tileCache) throws Exception {
         File tileCacheDirectory = getTileCacheDirectoryAsFile(tileCache);
         File databaseFile = new File(tileCacheDirectory, TileCacheSQLiteHelper.DATABASE_NAME);
         if (!databaseFile.exists()) {
-            File tempTileCacheRootDirectory = new File(mSdCardAccess.getSdCardAppDirectory(),
-                    TileCacheManager.TILE_CACHE_ROOT_FOLDER_NAME);
-            if (!tempTileCacheRootDirectory.exists() && !tempTileCacheRootDirectory.mkdirs()) {
-                throw new Exception("Could not create tile cache directory '" +
-                        tempTileCacheRootDirectory.getAbsolutePath() + "'");
-            }
-            File tempTileCacheDirectory = new File(tempTileCacheRootDirectory, tileCache.getName());
-            if (!tempTileCacheDirectory.exists() && !tempTileCacheDirectory.mkdirs()) {
-                throw new Exception("Could not create tile cache directory '" +
-                        tempTileCacheDirectory.getAbsolutePath() + "'");
-            }
-
+            File tempTileCacheDirectory = getOrCreateDirectory(
+                    getOrCreateDirectory(mSdCardAccess.getSdCardAppDirectory(),
+                    TileCacheManager.TILE_CACHE_ROOT_FOLDER_NAME), tileCache.getName());
             SQLiteDatabase database = mTileCacheSQLiteHelper.getWritableDatabase(
                     tempTileCacheDirectory);
             database.close();
@@ -116,7 +112,25 @@ public class SdCardTileCacheAccess {
                 Log.w(TAG, "Could not delete directoy '" + tempTileCacheDirectory.getAbsolutePath() + "'");
             }
         }
-        return mTileCacheSQLiteHelper.getReadableDatabase(tileCacheDirectory);
+        return mTileCacheSQLiteHelper.getReadonlyDatabase(tileCacheDirectory);
+    }
+
+    public SQLiteDatabase getWritableDatabase(TileCache tileCache) throws Exception {
+        File tileCacheDirectory = getTileCacheDirectoryAsFile(tileCache);
+        File tileCacheRootDirectory = getOrCreateDirectory(mSdCardAccess.getSdCardAppDirectory(),
+                        TileCacheManager.TILE_CACHE_ROOT_FOLDER_NAME);
+        mSdCardAccess.moveDirectory(tileCacheDirectory, DocumentFile.fromFile(tileCacheRootDirectory));
+
+        File databaseDirectory = new File(tileCacheRootDirectory, tileCache.getName());
+        return mTileCacheSQLiteHelper.getWritableDatabase(databaseDirectory);
+    }
+
+    public File getOrCreateDirectory(File parentDirectory, String directoryName) throws Exception {
+        File directory = new File(parentDirectory, directoryName);
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new Exception("Could not create directory '" + directory.getAbsolutePath() + "'");
+        }
+        return directory;
     }
 
     private boolean deleteRecursive(File path) throws FileNotFoundException {

@@ -21,18 +21,8 @@ public class TileCacheSQLiteHelper extends SQLiteOpenHelper {
     public static final String[] DATABASE_CREATE = {
             "CREATE TABLE 'CACHED_TILE' (\n" +
                     "'X' INTEGER NOT NULL,\n" +
-                    "'Y' INTEGER NOT NULL,\n" +
-                    "'ZOOM' INTEGER NOT NULL,\n" +
-                    "'TILE_PROVIDER_ID' TEXT NOT NULL,\n" +
-                    "'QUAD_KEY' TEXT NOT NULL,\n" +
-                    "'DATA' BLOB,\n" +
-                    "'TIMESTAMP' INTEGER NOT NULL,\n" +
-                    "'EXPIRES' INTEGER,\n" +
-                    " PRIMARY KEY (X, Y, ZOOM, TILE_PROVIDER_ID)\n" +
-                    ");",
-            "CREATE INDEX TILE_PROVIDER_ID_IDX ON CACHED_TILE (TILE_PROVIDER_ID);",
-            // This index was added for 13.2.0 and may not be present in all databases
-            "CREATE INDEX TILE_PROVIDER_ID_ZOOM_IDX ON CACHED_TILE (TILE_PROVIDER_ID, ZOOM);"
+                    " PRIMARY KEY (X)\n" +
+                    ");"
     };
     private Context mContext;
 
@@ -60,18 +50,33 @@ public class TileCacheSQLiteHelper extends SQLiteOpenHelper {
         return null;
     }
 
-    public SQLiteDatabase getReadableDatabase(final File directory) {
-        TileCacheSQLiteHelper helper = getSQLiteHelper(directory);
+    public SQLiteDatabase getReadonlyDatabase(final File directory) {
+        ContextWrapper wrappedContext = new ContextWrapper(mContext.getApplicationContext()) {
+
+            @Override
+            public SQLiteDatabase openOrCreateDatabase(
+                    String name, int mode, SQLiteDatabase.CursorFactory factory) {
+                return SQLiteDatabase.openDatabase(getDatabasePath(name).getPath(), factory, SQLiteDatabase.OPEN_READONLY);
+            }
+
+            @Override
+            public SQLiteDatabase openOrCreateDatabase(
+                    String name, int mode, SQLiteDatabase.CursorFactory factory,
+                    DatabaseErrorHandler errorHandler) {
+                return SQLiteDatabase.openDatabase(getDatabasePath(name).getPath(), factory, SQLiteDatabase.OPEN_READONLY, errorHandler);
+            }
+
+            @Override
+            public File getDatabasePath(String name) {
+                return new File(directory, name);
+            }
+        };
+
+        TileCacheSQLiteHelper helper = new TileCacheSQLiteHelper(wrappedContext);
         return helper.getReadableDatabase();
     }
 
     public SQLiteDatabase getWritableDatabase(final File directory) {
-        TileCacheSQLiteHelper helper = getSQLiteHelper(directory);
-        return helper.getWritableDatabase();
-    }
-
-    @NonNull
-    private TileCacheSQLiteHelper getSQLiteHelper(final File directory) {
         ContextWrapper wrappedContext = new ContextWrapper(mContext.getApplicationContext()) {
 
             @Override
@@ -93,6 +98,7 @@ public class TileCacheSQLiteHelper extends SQLiteOpenHelper {
             }
         };
 
-        return new TileCacheSQLiteHelper(wrappedContext);
+        TileCacheSQLiteHelper helper = new TileCacheSQLiteHelper(wrappedContext);
+        return helper.getWritableDatabase();
     }
 }

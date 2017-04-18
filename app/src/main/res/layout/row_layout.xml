@@ -18,17 +18,24 @@
             android:textStyle="bold" />
 
         <Button
+            android:id="@+id/readDatabaseButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/readDatabaseButton"
-            android:text="read db"
-            android:layout_gravity="right"/>
+            android:layout_gravity="right"
+            android:text="read db" />
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/deleteButton"
-            android:text="delete"
+            android:id="@+id/writeDatabaseButton"
+            android:text="write db"
             android:layout_gravity="right"/>
+
+        <Button
+            android:id="@+id/deleteButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="delete" />
     </LinearLayout>
 </LinearLayout>
